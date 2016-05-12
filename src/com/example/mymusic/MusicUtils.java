@@ -3,8 +3,6 @@ package com.example.mymusic;
 import java.util.Formatter;
 import java.util.Locale;
 
-import com.android.music.IMediaPlaybackService;
-
 import android.content.ContentResolver;
 import android.content.Context;
 import android.database.Cursor;

@@ -8,8 +8,8 @@ import android.database.CharArrayBuffer;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.RemoteException;
 import android.provider.MediaStore;
-import android.provider.ContactsContract.CommonDataKinds.Im;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
@@ -36,11 +36,53 @@ import android.widget.TextView;
 public class TrackBrowserActivity extends ListActivity {
 	private ListView mTrackList;
 	private TrackListAdapter mAdapter;
+	private Cursor mTrackCursor;
+
+	private String mPlaylist;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.media_picker_activity);
+
+		mAdapter = new TrackListAdapter(getApplication(), // need to use
+				// application
+				// context to
+				// avoid leaks
+				this, R.layout.track_list_item, null, // cursor
+				new String[] {}, new int[] {}, "nowplaying".equals(mPlaylist),
+				mPlaylist != null && !(mPlaylist.equals("podcasts") || mPlaylist.equals("recentlyadded")));
+		setListAdapter(mAdapter);
+		setTitle(R.string.working_songs);
+		getTrackCursor(mAdapter.getQueryHandler(), null, true);
+
+		// if (mAdapter == null) {
+		// mAdapter = new TrackListAdapter(getApplication(), // need to use
+		// // application
+		// // context to
+		// // avoid leaks
+		// this, R.layout.track_list_item, null, // cursor
+		// new String[] {}, new int[] {}, "nowplaying".equals(mPlaylist),
+		// mPlaylist != null && !(mPlaylist.equals("podcasts") ||
+		// mPlaylist.equals("recentlyadded")));
+		// setListAdapter(mAdapter);
+		// setTitle(R.string.working_songs);
+		// getTrackCursor(mAdapter.getQueryHandler(), null, true);
+		// } else {
+		// mTrackCursor = mAdapter.getCursor();
+		// // If mTrackCursor is null, this can be because it doesn't have
+		// // a cursor yet (because the initial query that sets its cursor
+		// // is still in progress), or because the query failed.
+		// // In order to not flash the error dialog at the user for the
+		// // first case, simply retry the query when the cursor is null.
+		// // Worst case, we end up doing the same query twice.
+		// if (mTrackCursor != null) {
+		// init(mTrackCursor, false);
+		// } else {
+		// setTitle(R.string.working_songs);
+		// getTrackCursor(mAdapter.getQueryHandler(), null, true);
+		// }
+		// }
 
 	}
 
@@ -59,6 +101,9 @@ public class TrackBrowserActivity extends ListActivity {
 
 		private TrackBrowserActivity mActivity = null;
 		private TrackQueryHandler mQueryHandler;
+
+		private String mConstraint = null;// 约束
+		private boolean mConstraintIsValid = false;
 
 		static class ViewHolder {
 			TextView song;
@@ -79,7 +124,7 @@ public class TrackBrowserActivity extends ListActivity {
 				public String orderBy;
 			}
 
-			public TrackQueryHandler(ContentResolver cr) {
+			TrackQueryHandler(ContentResolver cr) {
 				super(cr);
 			}
 
@@ -149,7 +194,7 @@ public class TrackBrowserActivity extends ListActivity {
 			mActivity = newactivity;
 		}
 
-		public TrackQueryHandler getQueryHanlder() {
+		public TrackQueryHandler getQueryHandler() {
 			return mQueryHandler;
 		}
 
@@ -226,16 +271,63 @@ public class TrackBrowserActivity extends ListActivity {
 
 			builder.getChars(0, len, vh.buffer2, 0);
 			vh.artist.setText(vh.buffer2, 0, len);
-			
-			ImageView iv=vh.play_indicator;
-			long id=-1;
-			
-			if (MusicUtils.sService) {
-				
+
+			ImageView iv = vh.play_indicator;
+			long id = -1;
+
+			if (MusicUtils.sService != null) {
+				try {
+					if (mIsNowPlaying) {
+						id = MusicUtils.sService.getQueuePosition();
+					} else {
+						id = MusicUtils.sService.getAudioId();
+					}
+				} catch (RemoteException e) {
+				}
+			}
+
+			if ((mIsNowPlaying && cursor.getPosition() == id)
+					|| (!mIsNowPlaying && !mDisableNowPlayingIndicator && cursor.getLong(mAudioIdIdx) == id)) {
+				iv.setImageResource(R.drawable.indicator_ic_mp_playing_list);
+				iv.setVisibility(View.VISIBLE);
+			} else {
+				iv.setVisibility(View.GONE);
 			}
 		}
-		
 
+		@Override
+		public void changeCursor(Cursor cursor) {
+			if (mActivity.isFinishing() && cursor != null) {
+				cursor.close();
+				cursor = null;
+			}
+			if (cursor != mActivity.mTrackCursor) {
+				mActivity.mTrackCursor = cursor;
+				super.changeCursor(cursor);
+				getColums(cursor);
+			}
+		}
+
+		/**
+		 * After this method returns the resulting cursor is passed to
+		 * changeCursor(Cursor) and the previous cursor is closed.
+		 */
+		@Override
+		public Cursor runQueryOnBackgroundThread(CharSequence constraint) {
+			String s = constraint.toString();
+			if (mConstraintIsValid && ((s == null) || (s != null && s.equals(mConstraint)))) {
+				return getCursor();
+			}
+			Cursor cursor = mActivity.getTrackCursor(mQueryHandler, s, false);
+			mConstraint = s;
+			mConstraintIsValid = true;
+			return cursor;
+		}
+
+	}
+
+	private Cursor getTrackCursor(TrackListAdapter.TrackQueryHandler queryhandler, String filter, boolean async) {
+		return null;
 	}
 
 	public void init(Cursor newCursor, boolean isLimited) {
