@@ -5,6 +5,7 @@ import android.content.Context;
 import android.database.CharArrayBuffer;
 import android.database.Cursor;
 import android.os.Bundle;
+import android.widget.ImageView;
 import android.widget.ListView;
 import android.widget.SimpleCursorAdapter;
 import android.widget.TextView;
@@ -37,13 +38,14 @@ public class TrackBrowserActivity extends ListActivity {
 	}
 
 	static class TrackListAdapter extends SimpleCursorAdapter {
-		boolean mIsNowPlaying;
+		boolean mIsNowPlaying;//
 		boolean mDisableNowPlayingIndicator;
 
 		static class ViewHolder {
 			TextView song;
 			TextView artist;
 			TextView duration;
+			ImageView play_indicator;
 			CharArrayBuffer buffer1;
 			char[] buffer2;
 		}
