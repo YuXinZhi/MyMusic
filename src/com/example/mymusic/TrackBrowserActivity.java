@@ -256,7 +256,8 @@ public class TrackBrowserActivity extends ListActivity {
 			protected void onQueryComplete(int token, Object cookie, Cursor cursor) {
 				// 查询完成
 				Log.i("@@@", "query complete: " + cursor.getCount() + " " + mActivity);
-				mActivity.init(cursor, cookie != null);// 当cookie!=null说明limit是100，不止一条记录
+				// cookie==null说明是startQuery执行的的不是异步查询，cookie是startQuery执行后传入的参数
+				mActivity.init(cursor, cookie != null);
 
 				/**
 				 * token==0 执行的是异步查询
@@ -266,7 +267,8 @@ public class TrackBrowserActivity extends ListActivity {
 				 * 
 				 */
 				if (token == 0 && cookie != null && cursor != null && !cursor.isClosed() && cursor.getCount() >= 100) {
-
+					QueryArgs args = (QueryArgs) cookie;
+					startQuery(1, null, args.uri, args.projection, args.selection, args.selectionArgs, args.orderBy);
 				}
 
 			}
